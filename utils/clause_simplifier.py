@@ -1,34 +1,26 @@
-#Simplify complex legal clauses into plain English.
+# Install the Gemini API client
+#!pip install -q google-generativeai
 
-# clause_simplifier.py
+# Import required libraries
+import google.generativeai as genai
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+# Configure your API key (get it from https://makersuite.google.com/app/apikey)
+GOOGLE_API_KEY = "AIzaSyAz1IufdDxClKN3ni_HfdC24F2a4JjLNUg"
+genai.configure(api_key=GOOGLE_API_KEY)
 
-class ClauseSimplifier:
-    def __init__(self, model_name="google/flan-t5-large"):
-        print("[INFO] Loading simplification model...")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+# Load the Gemini 2.5 Flash model
+model = genai.GenerativeModel(model_name="gemini-2.5-flash")
 
-    def simplify_clause(self, clause: str, max_length: int = 100) -> str:
-        """
-        Simplifies a legal clause using a T5-style instruction model.
-        """
-        prompt = f"simplify: {clause}"
-        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+# Sample complex clause to simplify
+clause = """In the event that the user fails to comply with the terms and conditions set forth herein, 
+the company reserves the right, without prior notice, to suspend or terminate the user’s access 
+to the platform, notwithstanding any prior agreements."""
 
-        outputs = self.model.generate(
-            inputs.input_ids,
-            max_length=max_length,
-            num_beams=4,
-            early_stopping=True
-        )
+# Prompt for simplification
+prompt = f"Simplify this legal clause into plain English:\n\n\"{clause}, just give one response.\""
 
-        simplified_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return simplified_text
+# Generate the simplified version
+response = model.generate_content(prompt)
 
-    def simplify_clauses(self, clause_list):
-        """
-        Simplifies a list of clauses and returns a list of simplified outputs.
-        """
-        return [self.simplify_clause(clause) for clause in clause_list]
+# Print the simplified clause
+print("Simplified Clause:\n", response.text)
