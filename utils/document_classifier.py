@@ -1,55 +1,36 @@
-# utils/document_classifier.py
+# Install Gemini client
+#pip install -q google-generativeai
 
-import os
-import requests
-from dotenv import load_dotenv
+# Import libraries
+import google.generativeai as genai
 
-load_dotenv()
+# Set your Gemini API key
+GOOGLE_API_KEY = "AIzaSyAz1IufdDxClKN3ni_HfdC24F2a4JjLNUg"
+genai.configure(api_key=GOOGLE_API_KEY)
 
-WATSON_API_KEY = os.getenv("WATSON_API_KEY")
-WATSON_PROJECT_ID = os.getenv("WATSON_PROJECT_ID")
-WATSON_GRANITE_URL = os.getenv("WATSON_GRANITE_URL")
-MODEL_ID = os.getenv("MODEL_ID", "granite-13b-instruct")
+# Load the Gemini 1.5 Flash model
+model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 
+# Sample document content (replace with any actual doc text)
+document_text = """
+This agreement is made between ABC Corporation and John Doe for the licensing of intellectual property
+related to the ABC software suite. The licensee agrees to pay a fee of $10,000 per annum...
+"""
 
-def classify_document(document_text: str) -> str:
-    prompt = (
-        f"Classify the following legal document into one of these types: "
-        f"NDA, Lease Agreement, Employment Contract, Service Agreement.\n\n"
-        f"Document:\n{document_text}\n\nClassification:"
-    )
+# Prompt to classify the document type
+prompt = f"""Analyze the following document content and classify the document type from among:
+["Agreement", "Invoice", "Resume", "Policy Document", "Legal Notice", "Report", "Other"].
 
-    headers = {
-        "Authorization": f"Bearer {WATSON_API_KEY}",
-        "Content-Type": "application/json",
-    }
+Document:
+\"\"\"
+{document_text}
+\"\"\"
 
-    payload = {
-        "model_id": MODEL_ID,
-        "project_id": WATSON_PROJECT_ID,
-        "inputs": [prompt]
-    }
+Output only the most likely document type label.
+"""
 
-    try:
-        response = requests.post(WATSON_GRANITE_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
+# Generate response
+response = model.generate_content(prompt)
 
-        if "results" in result:
-            classification = result["results"][0]["generated_text"].strip()
-            return classification
-        else:
-            return "Unknown (No results)"
-
-    except Exception as e:
-        print("Error:", e)
-        return "Unknown (Error)"
-
-# Example usage
-if __name__ == "__main__":
-    sample_doc = """
-    This Lease Agreement is made and entered into this 1st day of January, 2024, by and between [Landlord Name] (hereinafter referred to as "Landlord") and [Tenant Name] (hereinafter referred to as "Tenant").
-    """
-
-    result = classify_document(sample_doc)
-    print("Predicted Document Type:", result)
+# Print predicted document type
+print("Predicted Document Type:", response.text.strip())
