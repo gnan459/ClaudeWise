@@ -1,0 +1,1 @@
+#Extract legal entities such as parties, dates, obligations, monetary values, etc.

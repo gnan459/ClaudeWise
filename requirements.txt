@@ -1,0 +1,13 @@
+streamlit
+transformers
+torch
+spacy
+scikit-learn
+python-docx
+pdfplumber
+PyMuPDF  # pymupdf
+python-dotenv
+ibm-watson
+nltk
+requests 
+python-dotenv
