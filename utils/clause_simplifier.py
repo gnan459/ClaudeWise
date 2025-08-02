@@ -1,11 +1,15 @@
 import google.generativeai as genai
+import dotenv
+import os
+dotenv.load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # Configure your API key (get it from https://makersuite.google.com/app/apikey)
-GOOGLE_API_KEY = "AIzaSyAz1IufdDxClKN3ni_HfdC24F2a4JjLNUg"
+
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Load the Gemini 2.5 Flash model
-model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+model = genai.GenerativeModel(model_name="gemini-2.5-pro")
 
 def simplify_clause(clause: str) -> str:
     """Simplifies a legal clause into plain English using Gemini API."""

@@ -1,26 +1,28 @@
 import google.generativeai as genai
+import dotenv
+import os
+
+# Load environment variables
+dotenv.load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # Set your Gemini API key
-GOOGLE_API_KEY = "AIzaSyAz1IufdDxClKN3ni_HfdC24F2a4JjLNUg"
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Load the Gemini 1.5 Flash model
-model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+# Load the Gemini 2.5 Pro model
+model = genai.GenerativeModel(model_name="gemini-2.5-pro")
 
 def classify_document(document_text: str) -> str:
-    """
-    Classifies the document type using Gemini API.
-    Returns the most likely document type label.
-    """
-    prompt = f"""Analyze the following document content and classify the document type from among:
-    ["Agreement", "Invoice", "Resume", "Policy Document", "Legal Notice", "Report", "Other"].
+    prompt = f"""Analyze the following document content and classify it into one of the following document types:
 
-    Document:
-    \"\"\"
-    {document_text}
-    \"\"\"
+["Employment Contract", "Rental/Lease Agreement", "Non-Disclosure Agreement (NDA)", "Insurance Policy", "Service Agreement", "Invoice", "Resume", "Legal Notice", "Report", "Other"]
 
-    Output only the most likely document type label.
-    """
+Document:
+\"\"\"
+{document_text}
+\"\"\"
+
+Output only the most likely document type label from the list above. Do not explain or elaborate—just return the label.
+"""
     response = model.generate_content(prompt)
     return response.text.strip() if hasattr(response, 'text') else str(response)

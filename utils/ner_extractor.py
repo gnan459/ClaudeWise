@@ -1,23 +1,52 @@
-from ibm_watson import NaturalLanguageUnderstandingV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
-from ibm_watson.natural_language_understanding_v1 import Features, KeywordsOptions
+import google.generativeai as genai
+import dotenv
+import os
+import json
+import re
 
-authenticator = IAMAuthenticator("_Tx2WKK4GC8B2VMd_CsP0cmQBY3593KPYn-7MM2KxPPd")
-nlu = NaturalLanguageUnderstandingV1(
-    version='2022-04-07',
-    authenticator=authenticator
-)
-nlu.set_service_url("https://api.au-syd.natural-language-understanding.watson.cloud.ibm.com/instances/766276be-3941-48ac-819c-2a986230c244")
+# Load environment variables
+dotenv.load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-def extract_entities(text: str) -> dict:
-    """
-    Extracts legal entities (keywords) from the given text using IBM Watson NLU.
-    Returns a dictionary with 'keywords' as a list of keyword strings.
-    """
-    response = nlu.analyze(
-        text=text,
-        features=Features(keywords=KeywordsOptions())
-    ).get_result()
-    keywords = response.get("keywords", [])
-    keyword_texts = [kw["text"] for kw in keywords]
-    return {"keywords": keyword_texts}
+# Configure the Gemini model
+genai.configure(api_key=GOOGLE_API_KEY)
+model = genai.GenerativeModel(model_name="gemini-2.5-pro")
+
+def extract_entities(document_text: str) -> dict:
+    prompt = f"""
+You are a document analysis assistant.
+
+Extract named entities from the document below and organize them by type using the following categories (only if present):
+- PERSON
+- ORGANIZATION
+- LOCATION
+- DATE
+- MONEY
+- PERCENT
+- LAW
+- GPE (Countries, Cities, States)
+- PRODUCT
+- EVENT
+- OTHER
+
+Return the result strictly as a valid JSON object. Do not include explanations or any extra text.
+
+Document:
+\"\"\"
+{document_text}
+\"\"\"
+"""
+
+    response = model.generate_content(prompt)
+    raw_output = response.text if hasattr(response, "text") else str(response)
+
+    try:
+        # Try to isolate the first JSON-like object in the response
+        json_match = re.search(r'\{[\s\S]*\}', raw_output)
+        if json_match:
+            cleaned_json = json_match.group(0)
+            return json.loads(cleaned_json)
+        else:
+            return {"error": "No JSON object found", "raw_output": raw_output}
+    except Exception as e:
+        return {"error": str(e), "raw_output": raw_output}

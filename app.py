@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.file_loader import load_file
-from utils.clause_extractor import ClauseExtractor
+from utils.clause_extractor import extract_clauses
 from utils.clause_simplifier import simplify_clause
 from utils.document_classifier import classify_document
 from utils.ner_extractor import extract_entities
@@ -38,10 +38,30 @@ if uploaded_file:
         # --- Clause Extraction ---
         if do_extract:
             st.subheader("📌 Extracted Clauses")
-            extractor = ClauseExtractor()
-            clauses = extractor.extract_clauses(text)
+            clauses = extract_clauses(text)
             for i, clause in enumerate(clauses):
-                st.markdown(f"**Clause {i+1}:** {clause}")
+                st.markdown(f"-->{clause}")
+        clauses = extract_clauses(text)
+        # --- RAG Chatbot ---
+        st.header("💬 RAG Chatbot (Gemini-powered)")
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+
+        user_query = st.text_input("Ask a question about your document:", key="rag_input")
+        if user_query and clauses:
+            # Simple retrieval: use all clauses as context (or select top-N relevant ones)
+            # For a real RAG, you would embed and select most relevant clauses
+            context = "\n".join(clauses)
+            import google.generativeai as genai
+            model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+            prompt = f"Context:\n{context}\n\nQuestion: {user_query}\nAnswer:"
+            response = model.generate_content(prompt)
+            answer = response.text.strip() if hasattr(response, 'text') else str(response)
+            st.session_state.chat_history.append(("user", user_query))
+            st.session_state.chat_history.append(("bot", answer))
+
+        for speaker, msg in st.session_state.chat_history:
+            st.markdown(f"{speaker.capitalize()}:** {msg}")
 
         # --- Clause Simplification ---
         if do_extract and do_simplify:

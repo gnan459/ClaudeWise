@@ -1,59 +1,51 @@
-#Break down a large legal document into individual clauses.
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
-from transformers import AutoTokenizer, AutoModel
-import torch
-import nltk
-from sklearn.cluster import KMeans
-import numpy as np
+load_dotenv()
 
-# Download NLTK sentence tokenizer
-nltk.download('punkt_tab')
+# Set up the Gemini API key
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-class ClauseExtractor:
-    def __init__(self, model_name="nlpaueb/legal-bert-base-uncased"):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
+# Initialize Gemini Pro model
+model = genai.GenerativeModel("gemini-2.5-pro")
 
-    def _get_cls_embedding(self, sentence):
-        """Extract [CLS] token embedding for a given sentence."""
-        inputs = self.tokenizer(sentence, return_tensors="pt", truncation=True, padding=True, max_length=512)
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-        cls_embedding = outputs.last_hidden_state[:, 0, :]  # CLS token
-        return cls_embedding.squeeze(0).numpy()
 
-    def extract_clauses(self, document_text, n_clusters=5):
-        """Split document into sentences and group similar ones into clauses."""
-        # Step 1: Sentence Tokenization
-        sentences = nltk.sent_tokenize(document_text)
+def extract_clauses(document_text):
+    """Extract clauses from a legal document using Gemini Pro."""
+    prompt = f"""
+You are a legal assistant AI. Extract individual clauses from the following legal document and present each clause as a separate numbered item.
 
-        # Step 2: Get CLS embeddings for all sentences
-        embeddings = np.array([self._get_cls_embedding(sent) for sent in sentences])
+Text:
+\"\"\"
+{document_text}
+\"\"\"
+make the headings bold and use markdown formatting for clarity.
+Output format:
+**Clause 1:** ...
+**Clause 2:** ...
+...
+"""
+    try:
+        response = model.generate_content(prompt)
+        result = response.text.strip()
+        # Optional: split by "Clause X:" to get structured list
+        clauses = result.split("Clause ")[1:]  # remove leading text
+        clauses = [f"Clause {clause.strip()}" for clause in clauses]
+        return clauses
+    except Exception as e:
+        print("[Gemini] Error extracting clauses:", e)
+        return ["Error extracting clauses."]
 
-        # Step 3: KMeans clustering to group similar sentences (optional)
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        labels = kmeans.fit_predict(embeddings)
-
-        # Step 4: Group sentences by cluster label
-        clauses = {}
-        for idx, label in enumerate(labels):
-            clauses.setdefault(label, []).append(sentences[idx])
-
-        # Step 5: Format clauses
-        extracted_clauses = [" ".join(group) for group in clauses.values()]
-        return extracted_clauses
-
-# # Example usage
-# if __name__ == "__main__":
-#     sample_text = """
+# # Example Usage
+# if _name_ == "_main_":
+#     text = """
 #     This Agreement is made effective as of the date signed below.
 #     The Parties agree to the terms set forth herein.
 #     Confidentiality must be maintained at all times.
 #     The recipient shall not disclose any confidential information to third parties.
 #     This Agreement shall be governed by the laws of the State of California.
 #     """
-#     extractor = ClauseExtractor()
-#     clauses = extractor.extract_clauses(sample_text, n_clusters=3)
-
-#     for i, clause in enumerate(clauses):
-#         print(f"\nClause {i+1}:\n{clause}")
+#     clauses = extract_clauses(text)
+#     for clause in clauses:
+#         print(clause)
