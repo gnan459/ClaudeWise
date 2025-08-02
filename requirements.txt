@@ -11,3 +11,5 @@ ibm-watson
 nltk
 requests 
 python-dotenv
+streamlit
+google-generativeai

@@ -4,33 +4,32 @@ import fitz  # PyMuPDF
 import docx
 
 
-def load_txt(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        return f.read()
+def load_txt(uploaded_file):
+    return uploaded_file.read().decode("utf-8")
 
 
-def load_docx(file_path):
-    doc = docx.Document(file_path)
+def load_docx(uploaded_file):
+    doc = docx.Document(uploaded_file)
     return "\n".join([para.text for para in doc.paragraphs])
 
 
-def load_pdf(file_path):
+def load_pdf(uploaded_file):
     text = ""
-    with fitz.open(file_path) as doc:
+    with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
         for page in doc:
             text += page.get_text()
     return text
 
 
-def load_file(file_path):
-    ext = os.path.splitext(file_path)[1].lower()
-
+def load_file(uploaded_file):
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    uploaded_file.seek(0)  # Ensure pointer is at start
     if ext == ".pdf":
-        return load_pdf(file_path)
+        return load_pdf(uploaded_file)
     elif ext == ".docx":
-        return load_docx(file_path)
+        return load_docx(uploaded_file)
     elif ext == ".txt":
-        return load_txt(file_path)
+        return load_txt(uploaded_file)
     else:
         raise ValueError("Unsupported file format. Please upload PDF, DOCX, or TXT.")
     
