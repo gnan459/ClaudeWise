@@ -2,7 +2,7 @@ import streamlit as st
 from utils.file_loader import load_file
 from utils.clause_extractor import extract_clauses
 from utils.clause_simplifier import simplify_clause
-from utils.document_classifier import classify_document
+from utils.document_classifier import classify_and_analyze
 from utils.ner_extractor import extract_entities
 
 st.set_page_config(page_title="ClauseWise - Legal Document Analyzer", layout="wide")
@@ -29,19 +29,44 @@ if uploaded_file:
     else:
         st.success("✅ Document Loaded Successfully")
 
-        # --- Classification ---
-        if do_classify:
-            st.subheader("📂 Document Type Classification")
-            doc_type = classify_document(text)
-            st.info(f"**Predicted Document Type:** {doc_type}")
-
         # --- Clause Extraction ---
+        clauses = []
         if do_extract:
             st.subheader("📌 Extracted Clauses")
             clauses = extract_clauses(text)
             for i, clause in enumerate(clauses):
                 st.markdown(f"-->{clause}")
-        clauses = extract_clauses(text)
+
+        # --- Clause Simplification ---
+        simplified_clauses = []
+        if do_extract and do_simplify and clauses:
+            st.subheader("✏️ Simplified Clauses")
+            for i, clause in enumerate(clauses):
+                with st.expander(f"Original Clause {i+1}"):
+                    st.markdown(clause)
+                    simplified = simplify_clause(clause)
+                    st.success(f"**Simplified:** {simplified}")
+                    simplified_clauses.append(simplified)
+
+        # --- Classification & Insurance Policy Analysis ---
+        if do_classify:
+            st.subheader("📂 Document Type Classification")
+            # Pass simplified_clauses if available
+            result = classify_and_analyze(text, simplified_clauses if simplified_clauses else None)
+            doc_type = result["type"]
+            st.info(f"**Predicted Document Type:** {doc_type}")
+
+            if doc_type.lower() == "insurance policy" and "analysis" in result:
+                analysis = result["analysis"]
+                st.subheader("📊 Insurance Policy Analysis")
+                st.markdown(f"*Rating:* {analysis['rating']}")
+                st.markdown("### ✅ Benefits")
+                for benefit in analysis["benefits"]:
+                    st.markdown(f"- {benefit}")
+                st.markdown("### ⚠️ Drawbacks")
+                for drawback in analysis["drawbacks"]:
+                    st.markdown(f"- {drawback}")
+
         # --- RAG Chatbot ---
         st.header("💬 RAG Chatbot (Gemini-powered)")
         if "chat_history" not in st.session_state:
@@ -49,8 +74,6 @@ if uploaded_file:
 
         user_query = st.text_input("Ask a question about your document:", key="rag_input")
         if user_query and clauses:
-            # Simple retrieval: use all clauses as context (or select top-N relevant ones)
-            # For a real RAG, you would embed and select most relevant clauses
             context = "\n".join(clauses)
             import google.generativeai as genai
             model = genai.GenerativeModel(model_name="gemini-2.5-flash")
@@ -62,15 +85,6 @@ if uploaded_file:
 
         for speaker, msg in st.session_state.chat_history:
             st.markdown(f"{speaker.capitalize()}:** {msg}")
-
-        # --- Clause Simplification ---
-        if do_extract and do_simplify:
-            st.subheader("✏️ Simplified Clauses")
-            for i, clause in enumerate(clauses):
-                with st.expander(f"Original Clause {i+1}"):
-                    st.markdown(clause)
-                    simplified = simplify_clause(clause)
-                    st.success(f"**Simplified:** {simplified}")
 
         # --- Entity Extraction ---
         if do_ner:
